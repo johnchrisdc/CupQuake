@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#ffffff</color>
+    <color name="colorPrimaryDark">#b2b2b2</color>
+    <color name="colorAccent">#ff4040</color>
+
+    <color name="marker_great">#a94445</color>
+    <color name="marker_major">#3233ab</color>
+    <color name="marker_strong">#328cab</color>
+    <color name="marker_moderate">#32aa52</color>
+    <color name="marker_light">#8baa34</color>
+    <color name="marker_minor">#aa8c33</color>
+
+</resources>
