@@ -18,6 +18,7 @@ import android.view.MenuItem;
 import android.widget.Toast;
 
 import com.afollestad.materialdialogs.MaterialDialog;
+import com.borax12.materialdaterangepicker.date.DatePickerDialog;
 import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -33,6 +34,7 @@ import com.google.maps.android.clustering.ClusterManager;
 import com.google.maps.android.clustering.algo.GridBasedAlgorithm;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 import butterknife.BindView;
@@ -59,6 +61,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private GoogleMap googleMap;
 
     private FruitQuake.GetFruitQuake getFruitQuake;
+    private FruitQuake.GetFruitQuakeParams getFruitQuakeParams;
 
     private List<Marker> quakeMarkers = new ArrayList<>();
 
@@ -132,13 +135,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
-
-    private void addMarkers(List<Feature> features) {
+    private void clearMarkers() {
         for (Marker marker : quakeMarkers) {
             marker.remove();
         }
         quakeMarkers.clear();
+    }
 
+    private void addMarkers(List<Feature> features) {
         for (Feature feature : features) {
             if (feature != null) {
                 if (feature.getGeometry() != null) {
@@ -187,10 +191,60 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .items(R.array.filter)
                 .itemsCallbackSingleChoice(filterValue, new MaterialDialog.ListCallbackSingleChoice() {
                     @Override
-                    public boolean onSelection(MaterialDialog dialog, View view, int which, CharSequence text) {
-                        if (filterValue != which) {
-                            filterValue = which;
-                            refresh(); //Nakakalito to ah
+                    public boolean onSelection(MaterialDialog dialog, View view, final int which, CharSequence text) {
+                        if (filterValue != which || which == 4) {
+                            if (which == 4) {
+                                Calendar now = Calendar.getInstance();
+                                DatePickerDialog dpd = DatePickerDialog.newInstance(
+                                        new DatePickerDialog.OnDateSetListener() {
+                                            @Override
+                                            public void onDateSet(DatePickerDialog view, int year, int monthOfYear, int dayOfMonth, int yearEnd, int monthOfYearEnd, int dayOfMonthEnd) {
+                                                filterValue = which;
+
+                                                String start = year + "-" + (monthOfYear + 1) + "-" + dayOfMonth;
+                                                String end = yearEnd + "-" + (monthOfYearEnd + 1) + "-" + dayOfMonthEnd;
+
+                                                cancelTasks();
+
+                                                getFruitQuakeParams = new FruitQuake.GetFruitQuakeParams(start, end, new FruitQuake.FruitQuakeListener() {
+                                                    @Override
+                                                    public void onStartQuaking() {
+                                                        clearMarkers();
+
+                                                        loadingDialog = new MaterialDialog.Builder(context)
+                                                                .title("Loading")
+                                                                .canceledOnTouchOutside(false)
+                                                                .cancelable(false)
+                                                                .content("Please wait")
+                                                                .progress(true, 0)
+                                                                .show();
+                                                    }
+
+                                                    @Override
+                                                    public void onQuake(FruitQuake fruitQuake) {
+                                                        loadingDialog.dismiss();
+
+                                                        if (fruitQuake != null) {
+                                                            Log.d("MainActivity", "Count: " + fruitQuake.getMetadata().getCount());
+                                                            addMarkers(fruitQuake.getFeatures());
+                                                        } else
+                                                            Toast.makeText(context, "Error", Toast.LENGTH_SHORT).show();
+                                                    }
+                                                });
+
+                                                getFruitQuakeParams.execute();
+                                            }
+                                        },
+                                        now.get(Calendar.YEAR),
+                                        now.get(Calendar.MONTH),
+                                        now.get(Calendar.DAY_OF_MONTH)
+                                );
+                                dpd.setMaxDate(now);
+                                dpd.show(getFragmentManager(), "Datepickerdialog");
+                            } else {
+                                filterValue = which;
+                                refresh(); //Nakakalito to ah
+                            }
                         }
 
                         return true;
@@ -211,6 +265,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         getFruitQuake = new FruitQuake.GetFruitQuake(filterValue, new FruitQuake.FruitQuakeListener() {
             @Override
             public void onStartQuaking() {
+                clearMarkers();
+
                 loadingDialog = new MaterialDialog.Builder(context)
                         .title("Loading")
                         .canceledOnTouchOutside(false)
@@ -235,5 +291,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private void cancelTasks() {
         if (getFruitQuake != null)
             getFruitQuake.cancel(true);
+
+        if (getFruitQuakeParams != null)
+            getFruitQuakeParams.cancel(true);
     }
 }

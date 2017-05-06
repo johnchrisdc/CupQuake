@@ -137,7 +137,25 @@ public class FruitQuake {
         Response response = client.newCall(request).execute();
         String json = response.body().string();
 
-        Log.d("FruitQuake", json);
+        return new Gson().fromJson(json, FruitQuake.class);
+    }
+
+    public static FruitQuake getFruitQuake(String start, String end) throws Exception {
+
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(5, TimeUnit.MINUTES)
+                .readTimeout(5, TimeUnit.MINUTES)
+                .writeTimeout(5, TimeUnit.MINUTES)
+                .build();
+
+        Request request = new Request.Builder()
+                .url(Variables.API_QUAKE + start)
+                .build();
+
+        Log.d("FruitQuake", "URL: " + Variables.API_QUAKE + start + "&endtime=" + end);
+
+        Response response = client.newCall(request).execute();
+        String json = response.body().string();
 
         return new Gson().fromJson(json, FruitQuake.class);
     }
@@ -163,6 +181,43 @@ public class FruitQuake {
         protected FruitQuake doInBackground(Void... voids) {
             try {
                 return getFruitQuake(filter);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(FruitQuake fruitQuake) {
+            super.onPostExecute(fruitQuake);
+            fruitQuakeListener.onQuake(fruitQuake);
+        }
+    }
+
+    public static class GetFruitQuakeParams extends AsyncTask<Void, Void, FruitQuake> {
+
+        private String start;
+        private String end;
+        private FruitQuakeListener fruitQuakeListener;
+
+        public GetFruitQuakeParams(String start, String end, FruitQuakeListener fruitQuakeListener) {
+            this.start = start;
+            this.end = end;
+            this.fruitQuakeListener = fruitQuakeListener;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+
+            fruitQuakeListener.onStartQuaking();
+        }
+
+        @Override
+        protected FruitQuake doInBackground(Void... voids) {
+            try {
+                return getFruitQuake(start, end);
             } catch (Exception e) {
                 e.printStackTrace();
             }
